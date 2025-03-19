@@ -1,0 +1,9 @@
+[package]
+name = "pagers"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gtk = { version = "0.9.6", package = "gtk4", features = ["v4_16"] }
+termios = "0.3.3"
+libc = "0.2"
