@@ -1,5 +1,5 @@
 use std::fs::OpenOptions;
-use std::io::{self, Read, Write};
+use std::io::{self, Error, ErrorKind, Read, Write};
 use std::os::fd::AsRawFd;
 use std::os::unix::fs::OpenOptionsExt;
 use termios::*;
@@ -40,12 +40,20 @@ pub fn send_page(num: &str) -> io::Result<()> {
     // let cmd = format!("CPG,{},1,4\n", num);
     let cmd = format!("CPG,{},1,4\n", num);
 
-    // TODO: Check num written
-    f.write(cmd.as_bytes())?;
+    let written = f.write(cmd.as_bytes())?;
+    if written == 0 {
+        return Err(Error::new(ErrorKind::WriteZero, "Wrote zero bytes"));
+    }
 
-    let mut buf: [u8; 50] = [0; 50];
+    let mut buf: [u8; 32] = [0; 32];
     f.read(&mut buf)?;
-    println!("{:#?}", buf);
+    let resp = match std::str::from_utf8(&buf) {
+        Ok(s) => String::from(s),
+        Err(why) => format!("Not valid UTF-8: {}", why),
+    };
 
-    Ok(())
+    if resp.contains("SCPG") {
+        return Ok(());
+    }
+    Err(Error::new(ErrorKind::NotFound, "Negative response"))
 }

@@ -3,7 +3,7 @@ use gtk::{Application, ApplicationWindow, Button, glib};
 
 mod lrsn;
 
-const APP_ID: &str = "org.gtk_rs.HelloWorld1";
+const APP_ID: &str = "org.KIPR.Pagers";
 
 fn main() -> glib::ExitCode {
     // Create a new application
@@ -37,7 +37,7 @@ fn build_ui(app: &Application) {
 
     let window = ApplicationWindow::builder()
         .application(app)
-        .title("GTK in rust")
+        .title("KIPR Paging System")
         .child(&button)
         .build();
 
