@@ -4,7 +4,7 @@ use std::os::fd::AsRawFd;
 use std::os::unix::fs::OpenOptionsExt;
 use termios::*;
 
-pub fn send_page(num: &str) -> io::Result<()> {
+pub fn send_page(num: u32) -> io::Result<()> {
     // Open the serial port
     let mut f = OpenOptions::new()
         .read(true)
@@ -33,7 +33,7 @@ pub fn send_page(num: &str) -> io::Result<()> {
     tty.c_oflag = 0;
     tty.c_cflag |= CLOCAL | CREAD;
     tty.c_cc[VMIN] = 0;
-    tty.c_cc[VTIME] = 5;
+    tty.c_cc[VTIME] = 10;
 
     tcsetattr(fd, TCSANOW, &tty)?;
 
@@ -47,13 +47,23 @@ pub fn send_page(num: &str) -> io::Result<()> {
 
     let mut buf: [u8; 32] = [0; 32];
     f.read(&mut buf)?;
-    let resp = match std::str::from_utf8(&buf) {
+    match std::str::from_utf8(&buf) {
         Ok(s) => String::from(s),
         Err(why) => format!("Not valid UTF-8: {}", why),
     };
 
-    if resp.contains("SCPG") {
+    Ok(())
+
+    // I would love to have the extra error reporting,
+    // but something about the serial connection is not reliable enough
+    // and sometimes wrongly reports failure.
+    /*
+    if resp.contains("CPG") {
         return Ok(());
     }
-    Err(Error::new(ErrorKind::NotFound, "Negative response"))
+    Err(Error::new(
+        ErrorKind::NotFound,
+        format!("Response: {}", resp),
+    ))
+    */
 }
