@@ -1,6 +1,9 @@
-use gtk::{Application, ApplicationWindow, Button, Grid, ScrolledWindow, glib};
+use glib::clone;
+use gtk::{Application, ApplicationWindow, Button, Grid, ScrolledWindow, gio, glib};
 use gtk::{Label, prelude::*};
 use std::process;
+use std::thread;
+use std::time::Duration;
 
 mod csvproc;
 use csvproc::{Team, read_teams};
@@ -41,16 +44,37 @@ fn append_to_grid(row_number: i32, team: Team, grid: &Grid) {
         .margin_end(12)
         .build();
 
-    button.connect_clicked(move |button| match lrsn::send_page(team.num) {
-        Ok(_) => {
-            println!("Success");
-            button.set_label(&format!("Team {} paged!", team.num));
+    let (sender, receiver) = async_channel::bounded(1);
+
+    button.connect_clicked(move |button| {
+        let sender = sender.clone();
+        match lrsn::send_page(team.num) {
+            Ok(_) => {
+                println!("Success");
+                button.set_label(&format!("Team {} paged!", team.num));
+            }
+            Err(e) => {
+                eprintln!("Paging failed with: {}", e);
+                button.set_label("Failed");
+            }
         }
-        Err(e) => {
-            eprintln!("Paging failed with: {}", e);
-            button.set_label("Failed");
-        }
+        gio::spawn_blocking(move || {
+            let sender = sender.clone();
+            sender.send_blocking(false).expect("Channel not open");
+            thread::sleep(Duration::from_secs(1));
+            sender.send_blocking(true).expect("Channel not open");
+        });
     });
+
+    glib::spawn_future_local(clone!(
+        #[weak]
+        button,
+        async move {
+            while let Ok(enable_button) = receiver.recv().await {
+                button.set_sensitive(enable_button);
+            }
+        }
+    ));
 
     grid.attach(&team_num, 0, row_number, 1, 1);
     grid.attach(&school, 2, row_number, 1, 1);
