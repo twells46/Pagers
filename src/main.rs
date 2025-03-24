@@ -61,7 +61,7 @@ fn append_to_grid(row_number: i32, team: Team, grid: &Grid) {
         gio::spawn_blocking(move || {
             let sender = sender.clone();
             sender.send_blocking(false).expect("Channel not open");
-            thread::sleep(Duration::from_secs(1));
+            thread::sleep(Duration::from_secs(10));
             sender.send_blocking(true).expect("Channel not open");
         });
     });
@@ -72,6 +72,9 @@ fn append_to_grid(row_number: i32, team: Team, grid: &Grid) {
         async move {
             while let Ok(enable_button) = receiver.recv().await {
                 button.set_sensitive(enable_button);
+                if enable_button {
+                    button.set_label(&format!("Page team {}", team.num));
+                }
             }
         }
     ));
